@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Predictor de Calificación G3</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    /* ── Tokens ── */
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --border:    #2a2d3e;
+      --accent:    #6c63ff;
+      --accent2:   #a78bfa;
+      --text:      #e8e8f0;
+      --muted:     #7a7a9a;
+      --success:   #34d399;
+      --warning:   #fbbf24;
+      --danger:    #f87171;
+      --radius:    12px;
+      --mono:      'JetBrains Mono', monospace;
+      --sans:      'Inter', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header ── */
+    header {
+      width: 100%;
+      padding: 24px 40px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--surface);
+    }
+
+    .logo-badge {
+      width: 40px; height: 40px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono);
+      font-weight: 500;
+      font-size: 15px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .header-text h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+
+    .header-text p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .model-chip {
+      margin-left: auto;
+      background: rgba(108,99,255,.15);
+      border: 1px solid rgba(108,99,255,.35);
+      color: var(--accent2);
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 5px 12px;
+      border-radius: 20px;
+    }
+
+    /* ── Main layout ── */
+    main {
+      width: 100%;
+      max-width: 900px;
+      padding: 40px 24px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .intro {
+      text-align: center;
+      padding: 10px 0 6px;
+    }
+
+    .intro h2 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--text) 40%, var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .intro p {
+      margin-top: 10px;
+      font-size: 14px;
+      color: var(--muted);
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.6;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    /* ── Grid de campos ── */
+    .fields-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 560px) {
+      .fields-grid { grid-template-columns: 1fr; }
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .field label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .field-hint {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .field input,
+    .field select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 14px;
+      padding: 11px 14px;
+      outline: none;
+      transition: border-color .2s;
+      width: 100%;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--accent);
+    }
+
+    .field input.error,
+    .field select.error {
+      border-color: var(--danger);
+    }
+
+    .field select option { background: var(--surface); }
+
+    /* Slider especial */
+    .slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .slider-wrap input[type=range] {
+      flex: 1;
+      padding: 0;
+      background: transparent;
+      border: none;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .slider-val {
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--accent2);
+      min-width: 24px;
+      text-align: right;
+    }
+
+    /* Studytime labels */
+    .studytime-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+
+    .studytime-labels span {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    /* ── Botón ── */
+    .btn-predict {
+      margin-top: 28px;
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      color: #fff;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-predict:hover { opacity: .88; }
+    .btn-predict:active { transform: scale(.98); }
+    .btn-predict:disabled { opacity: .4; cursor: not-allowed; }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Resultado ── */
+    #result-section {
+      display: none;
+    }
+
+    .result-card {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .score-ring {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      flex-shrink: 0;
+    }
+
+    .score-ring svg { transform: rotate(-90deg); }
+
+    .score-ring .track { fill: none; stroke: var(--border); stroke-width: 8; }
+    .score-ring .fill  { fill: none; stroke-width: 8; stroke-linecap: round;
+                          transition: stroke-dashoffset .8s cubic-bezier(.4,0,.2,1),
+                                      stroke .4s; }
+
+    .score-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .score-number {
+      font-family: var(--mono);
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .score-max {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .result-detail { flex: 1; min-width: 200px; }
+
+    .result-detail h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .result-detail p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .grade-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+
+    /* ── Tabla de features (info) ── */
+    .features-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .features-table th {
+      text-align: left;
+      padding: 8px 12px;
+      color: var(--muted);
+      font-weight: 500;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .features-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .features-table tr:last-child td { border-bottom: none; }
+
+    .tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      background: rgba(108,99,255,.12);
+      color: var(--accent2);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    /* ── Error banner ── */
+    #error-banner {
+      display: none;
+      background: rgba(248,113,113,.12);
+      border: 1px solid rgba(248,113,113,.35);
+      color: var(--danger);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      margin-top: 16px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: auto;
+      padding: 20px 40px;
+      border-top: 1px solid var(--border);
+      width: 100%;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    footer span { color: var(--accent2); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-badge">G3</div>
+  <div class="header-text">
+    <h1>Predictor de Calificación Final</h1>
+    <p>Student Performance in Secondary Education · CRISP-DM</p>
+  </div>
+  <div class="model-chip">Ridge</div>
+</header>
+
+<main>
+  <!-- Intro -->
+  <div class="intro">
+    <h2>¿Cuál será la calificación final del alumno?</h2>
+    <p>Ingresa los datos académicos del estudiante. El modelo predice la calificación <strong>G3</strong> (escala 0–20) usando las 6 variables más relevantes identificadas durante el análisis.</p>
+  </div>
+
+  <!-- Formulario -->
+  <div class="card">
+    <div class="section-label">Datos del estudiante</div>
+    <div class="fields-grid">
+
+      <!-- G1 -->
+      <div class="field">
+        <label>
+          G1 — Primer periodo
+          <span class="field-hint">0 – 20</span>
+        </label>
+        <div class="slider-wrap">
+          <input type="range" id="G1" min="0" max="20" step="1" value="10"
+                 oninput="document.getElementById('G1-val').textContent=this.value">
+          <span class="slider-val" id="G1-val">10</span>
+        </div>
+      </div>
+
+      <!-- G2 -->
+      <div class="field">
+        <label>
+          G2 — Segundo periodo
+          <span class="field-hint">0 – 20</span>
+        </label>
+        <div class="slider-wrap">
+          <input type="range" id="G2" min="0" max="20" step="1" value="10"
+                 oninput="document.getElementById('G2-val').textContent=this.value">
+          <span class="slider-val" id="G2-val">10</span>
+        </div>
+      </div>
+
+      <!-- failures -->
+      <div class="field">
+        <label>
+          failures — Fallas previas
+          <span class="field-hint">0 – 4</span>
+        </label>
+        <select id="failures">
+          <option value="0">0 — Sin fallas</option>
+          <option value="1">1 falla</option>
+          <option value="2">2 fallas</option>
+          <option value="3">3 fallas</option>
+          <option value="4">4+ fallas</option>
+        </select>
+      </div>
+
+      <!-- studytime -->
+      <div class="field">
+        <label>
+          studytime — Tiempo de estudio
+        </label>
+        <select id="studytime">
+          <option value="1">1 — Menos de 2 h / semana</option>
+          <option value="2" selected>2 — Entre 2 y 5 h / semana</option>
+          <option value="3">3 — Entre 5 y 10 h / semana</option>
+          <option value="4">4 — Más de 10 h / semana</option>
+        </select>
+      </div>
+
+      <!-- absences -->
+      <div class="field">
+        <label>
+          absences — Ausencias
+          <span class="field-hint">0 – 93</span>
+        </label>
+        <input type="number" id="absences" min="0" max="93" value="0"
+               placeholder="Número de ausencias" />
+      </div>
+
+      <!-- higher -->
+      <div class="field">
+        <label>
+          higher — Educación superior
+        </label>
+        <select id="higher">
+          <option value="yes">Sí, desea cursar educación superior</option>
+          <option value="no">No desea cursar educación superior</option>
+        </select>
+      </div>
+
+    </div><!-- /fields-grid -->
+
+    <button class="btn-predict" id="btn-predict" onclick="predict()">
+      <div class="spinner" id="spinner"></div>
+      <span id="btn-text">Predecir calificación G3</span>
+    </button>
+
+    <div id="error-banner"></div>
+  </div><!-- /card -->
+
+  <!-- Resultado -->
+  <div class="card" id="result-section">
+    <div class="section-label">Resultado de la predicción</div>
+    <div class="result-card">
+      <div class="score-ring">
+        <svg viewBox="0 0 120 120" width="120" height="120">
+          <circle class="track" cx="60" cy="60" r="52"/>
+          <circle class="fill" id="ring-fill" cx="60" cy="60" r="52"
+                  stroke-dasharray="326.73"
+                  stroke-dashoffset="326.73"
+                  stroke="var(--accent)"/>
+        </svg>
+        <div class="score-center">
+          <div class="score-number" id="score-number">—</div>
+          <div class="score-max">/ 20</div>
+        </div>
+      </div>
+
+      <div class="result-detail">
+        <h3 id="result-title">Calificación estimada</h3>
+        <p id="result-desc">El modelo predice que el estudiante obtendrá esta calificación final según los datos proporcionados.</p>
+        <div class="grade-badge" id="grade-badge"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info de características -->
+  <div class="card">
+    <div class="section-label">Características del modelo</div>
+    <table class="features-table">
+      <thead>
+        <tr>
+          <th>Variable</th>
+          <th>Descripción</th>
+          <th>Tipo</th>
+          <th>Justificación</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code class="tag">G1</code></td>
+          <td>Calificación del primer periodo</td>
+          <td>Discreta (0–20)</td>
+          <td>Alta relación con el desempeño final</td>
+        </tr>
+        <tr>
+          <td><code class="tag">G2</code></td>
+          <td>Calificación del segundo periodo</td>
+          <td>Discreta (0–20)</td>
+          <td>Predictor más fuerte de G3</td>
+        </tr>
+        <tr>
+          <td><code class="tag">failures</code></td>
+          <td>Número de fallas académicas previas</td>
+          <td>Ordinal (0–4)</td>
+          <td>Afecta negativamente el rendimiento final</td>
+        </tr>
+        <tr>
+          <td><code class="tag">studytime</code></td>
+          <td>Horas de estudio semanales</td>
+          <td>Ordinal (1–4)</td>
+          <td>Representa la dedicación académica</td>
+        </tr>
+        <tr>
+          <td><code class="tag">absences</code></td>
+          <td>Número de ausencias escolares</td>
+          <td>Discreta (0–93)</td>
+          <td>Influye en el aprendizaje y desempeño</td>
+        </tr>
+        <tr>
+          <td><code class="tag">higher</code></td>
+          <td>Desea cursar educación superior</td>
+          <td>Nominal (yes/no)</td>
+          <td>Representa expectativa académica del estudiante</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+<footer>
+  Proyecto CRISP-DM · <span>Zenaida González Ramírez</span> · Matrícula 20231176 · Grupo 9A
+</footer>
+
+<script>
+  async function predict() {
+    const btn    = document.getElementById('btn-predict');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('btn-text');
+    const errorBanner = document.getElementById('error-banner');
+    const resultSection = document.getElementById('result-section');
+
+    // Recolectar valores
+    const payload = {
+      G1:        document.getElementById('G1').value,
+      G2:        document.getElementById('G2').value,
+      failures:  document.getElementById('failures').value,
+      studytime: document.getElementById('studytime').value,
+      absences:  document.getElementById('absences').value,
+      higher:    document.getElementById('higher').value,
+    };
+
+    // Validar absences
+    const abs = parseInt(payload.absences);
+    if (isNaN(abs) || abs < 0 || abs > 93) {
+      showError('El número de ausencias debe estar entre 0 y 93.');
+      return;
+    }
+
+    // UI: loading
+    errorBanner.style.display = 'none';
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    btnText.textContent = 'Calculando…';
+
+    try {
+      const res = await fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!data.success) throw new Error(data.error || 'Error desconocido');
+
+      showResult(data.prediction);
+    } catch (err) {
+      showError('Error al conectar con el servidor: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      btnText.textContent = 'Predecir calificación G3';
+    }
+  }
+
+  function showResult(score) {
+    const section   = document.getElementById('result-section');
+    const numEl     = document.getElementById('score-number');
+    const badgeEl   = document.getElementById('grade-badge');
+    const descEl    = document.getElementById('result-desc');
+    const ringFill  = document.getElementById('ring-fill');
+
+    section.style.display = 'block';
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    numEl.textContent = score.toFixed(1);
+
+    // Anillo
+    const circumference = 326.73;
+    const pct    = score / 20;
+    const offset = circumference - pct * circumference;
+    ringFill.style.strokeDashoffset = offset;
+
+    // Color según desempeño
+    let color, label, desc;
+    if (score >= 16) {
+      color = 'var(--success)'; label = 'Excelente'; desc = 'El estudiante tiene un desempeño sobresaliente. Muy probable aprobación con distinción.';
+    } else if (score >= 12) {
+      color = 'var(--accent2)'; label = 'Satisfactorio'; desc = 'El rendimiento es adecuado. El estudiante tiene buenas probabilidades de aprobar el curso.';
+    } else if (score >= 8) {
+      color = 'var(--warning)'; label = 'En riesgo'; desc = 'El estudiante podría necesitar apoyo adicional para alcanzar la calificación mínima aprobatoria.';
+    } else {
+      color = 'var(--danger)'; label = 'Crítico'; desc = 'Alto riesgo de reprobación. Se recomienda intervención académica inmediata.';
+    }
+
+    ringFill.style.stroke = color;
+    badgeEl.style.background  = color + '22';
+    badgeEl.style.color        = color;
+    badgeEl.style.border       = `1px solid ${color}55`;
+    badgeEl.textContent        = label;
+    descEl.textContent         = desc;
+  }
+
+  function showError(msg) {
+    const b = document.getElementById('error-banner');
+    b.textContent   = msg;
+    b.style.display = 'block';
+  }
+</script>
+
+</body>
+</html>
